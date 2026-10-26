@@ -1,0 +1,9 @@
+# Optional. User unit: ~/.config/systemd/user/mesh-wifi-gps.service
+[Unit]
+Description=WiFi-located virtual GPS (gpsd on 127.0.0.1:2947) for meshtasticd
+PartOf=meshtasticd.service
+
+[Service]
+ExecStart=/usr/bin/python3 %h/.local/share/meshtasticd-wsbridge/mesh_wifi_gps.py
+Restart=on-failure
+RestartSec=10

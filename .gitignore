@@ -1,0 +1,5 @@
+bridge/fw/*.elf
+bridge/fw/*.bin
+meshtastic/firmware/
+__pycache__/
+wifi-gps/fallback.json

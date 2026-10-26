@@ -1,0 +1,191 @@
+diff --git a/src/Power.cpp b/src/Power.cpp
+index 3e84437..4d8432e 100644
+--- a/src/Power.cpp
++++ b/src/Power.cpp
+@@ -989,6 +989,8 @@ bool Power::setup()
+         found = true;
+     } else if (serialBatteryInit()) {
+         found = true;
++    } else if (linuxBatteryInit()) {
++        found = true;
+     } else if (meshSolarInit()) {
+         found = true;
+ #ifdef HAS_ADS1115
+@@ -2400,3 +2402,116 @@ bool Power::serialBatteryInit()
+     return false;
+ }
+ #endif
++
++#if defined(ARCH_PORTDUINO) && defined(__linux__)
++#include <dirent.h>
++#include <fstream>
++
++/**
++ * Host battery, read from /sys/class/power_supply: a laptop running meshtasticd reports its own
++ * battery the way a handheld node reports its LiPo. Peripheral batteries (scope "Device", e.g. a
++ * wireless mouse) are skipped. A battery whose voltage can't be read is treated as absent, so the
++ * low-voltage shutdown never sees a bogus 0 mV.
++ */
++class LinuxBatteryLevel : public HasBatteryLevel
++{
++  public:
++    bool init()
++    {
++        battery = findSupply("Battery");
++        return !battery.empty();
++    }
++
++    int getBatteryPercent() override
++    {
++        long pct;
++        return readLong(battery + "/capacity", pct) ? clamp((int)pct, 0, 100) : -1;
++    }
++
++    uint16_t getBattVoltage() override
++    {
++        long uv;
++        if (!readLong(battery + "/voltage_now", uv) && !readLong(battery + "/voltage_min_design", uv))
++            return 0;
++        return (uint16_t)clamp(uv / 1000, 0L, 65535L);
++    }
++
++    bool isBatteryConnect() override
++    {
++        long present = 1; // not every driver has 'present'
++        readLong(battery + "/present", present);
++        return present && getBattVoltage() > 0;
++    }
++
++    bool isVbusIn() override
++    {
++        // Any mains/USB supply online, i.e. on the charger
++        bool online = false;
++        forEachSupply([&](const std::string &path) {
++            std::string type = readString(path + "/type");
++            long on;
++            if (type != "Battery" && readLong(path + "/online", on) && on)
++                online = true;
++        });
++        return online;
++    }
++
++    bool isCharging() override { return readString(battery + "/status") == "Charging"; }
++
++  private:
++    static constexpr const char *ROOT = "/sys/class/power_supply";
++    std::string battery;
++
++    template <typename F> static void forEachSupply(F f)
++    {
++        DIR *d = opendir(ROOT);
++        if (!d)
++            return;
++        while (dirent *e = readdir(d)) {
++            if (e->d_name[0] != '.')
++                f(std::string(ROOT) + "/" + e->d_name);
++        }
++        closedir(d);
++    }
++
++    static std::string findSupply(const char *wantType)
++    {
++        std::string found;
++        forEachSupply([&](const std::string &path) {
++            if (found.empty() && readString(path + "/type") == wantType && readString(path + "/scope") != "Device")
++                found = path;
++        });
++        return found;
++    }
++
++    static std::string readString(const std::string &path)
++    {
++        std::ifstream f(path);
++        std::string v;
++        std::getline(f, v);
++        return v;
++    }
++
++    static bool readLong(const std::string &path, long &out)
++    {
++        std::ifstream f(path);
++        return static_cast<bool>(f >> out);
++    }
++};
++
++static LinuxBatteryLevel linuxBatteryLevel;
++
++bool Power::linuxBatteryInit()
++{
++    if (!linuxBatteryLevel.init() || !linuxBatteryLevel.isBatteryConnect())
++        return false;
++    LOG_INFO("Power: using host battery from /sys/class/power_supply");
++    batteryLevel = &linuxBatteryLevel;
++    return true;
++}
++#else
++bool Power::linuxBatteryInit()
++{
++    return false;
++}
++#endif
+diff --git a/src/Power.h b/src/Power.h
+index 6a7bd21..6a4ac64 100644
+--- a/src/Power.h
++++ b/src/Power.h
+@@ -133,6 +133,7 @@ class Power : public concurrency::OSThread
+     bool meshSolarInit();
+     /// Setup a serial battery sensor
+     bool serialBatteryInit();
++    bool linuxBatteryInit();
+ #ifdef HAS_ADS1115
+     /// Setup ADS1115 I2C battery level sensor
+     bool ads1115Init();
+diff --git a/src/modules/DMShell.h b/src/modules/DMShell.h
+index 298a2a3..61eed3f 100644
+--- a/src/modules/DMShell.h
++++ b/src/modules/DMShell.h
+@@ -13,7 +13,7 @@
+ 
+ // The module drives a login shell through forkpty(), which only the Linux Portduino hosts have:
+ // the Windows and macOS builds have no <pty.h>.
+-#if defined(ARCH_PORTDUINO) && defined(__linux__)
++#if defined(ARCH_PORTDUINO) && defined(__linux__) && !defined(MESHTASTIC_EXCLUDE_DMSHELL)
+ #define MESHTASTIC_HAS_DMSHELL 1
+ #endif
+ 
+diff --git a/src/platform/portduino/PortduinoGlue.cpp b/src/platform/portduino/PortduinoGlue.cpp
+index f0a756a..68b9fa2 100644
+--- a/src/platform/portduino/PortduinoGlue.cpp
++++ b/src/platform/portduino/PortduinoGlue.cpp
+@@ -216,7 +216,8 @@ void cpuDeepSleep(uint32_t msecs)
+     notImplemented("cpuDeepSleep");
+ }
+ 
+-void updateBatteryLevel(uint8_t level) NOT_IMPLEMENTED("updateBatteryLevel");
++// No BLE battery service here; the level still goes out in device telemetry (Power.cpp LinuxBatteryLevel)
++void updateBatteryLevel(uint8_t) {}
+ 
+ int TCPPort = SERVER_API_DEFAULT_PORT;
+ bool checkConfigPort = true;
+diff --git a/variants/native/portduino/platformio.ini b/variants/native/portduino/platformio.ini
+index 0548138..5e1472b 100644
+--- a/variants/native/portduino/platformio.ini
++++ b/variants/native/portduino/platformio.ini
+@@ -546,3 +546,17 @@ build_src_filter =
+   +<platform/portduino/PortduinoGlue.cpp> +<platform/portduino/SimRadio.cpp>
+   +<platform/portduino/wasm/>
+   +<modules/> -<modules/esp32/>
++
++; Waveshare USB-TO-LoRa (GD32F103 + SX1262) driven through its bridge firmware, which turns the
++; stick into a dumb SPI/GPIO adapter like a MeshStick's CH341. Same Ch341Hal; the libpinedio-usb
++; backend is swapped, as native-windows does. Use with `spidev: ch341`, USB_VID 0x1A86 / USB_PID 0x55D3.
++[env:native-wsbridge]
++extends = env:native
++build_flags = ${env:native.build_flags}
++  -I src/platform/portduino/wsbridge/include
++  -DMESHTASTIC_WSBRIDGE
++  ; No remote login shell: on a laptop the API port is reachable from whatever WiFi it is on
++  -DMESHTASTIC_EXCLUDE_DMSHELL
++lib_ignore =
++  ${portduino_base.lib_ignore}
++  Pine libch341-spi Userspace library

@@ -1,0 +1,29 @@
+# meshtasticd on the Waveshare USB-TO-LoRa-HF (TCXO variant) running the wsbridge firmware.
+# Pin numbers are the bridge's (bridge/protocol.h), laid out like the MeshStick's.
+# Region, channels and node name are set from the app or CLI, not here.
+---
+Lora:
+  Module: sx1262
+  spidev: ch341         # Ch341Hal, with libpinedio-usb swapped for the wsbridge backend
+  USB_VID: 0x1A86       # CH343 on the Waveshare stick (WSBRIDGE_PORT overrides the search)
+  USB_PID: 0x55D3
+  CS: 0
+  RXen: 1               # PB4 RF switch: high on RX, low on TX
+  Reset: 2
+  Busy: 4
+  IRQ: 6
+  DIO2_AS_RF_SWITCH: false
+  DIO3_TCXO_VOLTAGE: 1.7  # what Waveshare's firmware used (Archie3d's notes)
+  SX126X_MAX_POWER: 22
+
+# Optional WiFi-located virtual GPS (wifi-gps/). Uncomment together with the mesh-wifi-gps unit.
+#GPS:
+#  GpsdHost: 127.0.0.1
+#  GpsdPort: 2947
+
+Logging:
+  LogLevel: info
+
+General:
+  MaxNodes: 200
+  MaxMessageQueue: 100

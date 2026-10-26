@@ -1,0 +1,3 @@
+[submodule "bridge/fw/libopencm3"]
+	path = bridge/fw/libopencm3
+	url = https://github.com/libopencm3/libopencm3.git

@@ -1,0 +1,34 @@
+#!/bin/bash
+# Launcher for the Meshtastic Desktop flatpak (menu entry: ~/.local/share/applications).
+#
+# Closing the window hides the app in the system tray, but on Plasma/Wayland its X11 (XEmbed) tray
+# icon can't bring it back: right-click does nothing and "show" fails. So:
+#   not running              -> start it
+#   running, window open     -> leave it (just say so)
+#   running, hidden in tray  -> quit it cleanly and start a fresh one (messages live in ~/.meshtastic)
+APP=org.meshtastic.MeshtasticDesktop
+WM_CLASS=org-meshtastic-desktop-MainKt
+JAR=/app/lib/meshtastic-desktop.jar
+export DISPLAY=${DISPLAY:-:0}
+
+running() { pgrep -f -- "-jar $JAR" >/dev/null; }
+
+window_open() {
+    local w
+    for w in $(xprop -root _NET_CLIENT_LIST 2>/dev/null | grep -oE '0x[0-9a-f]+'); do
+        xprop -id "$w" WM_CLASS 2>/dev/null | grep -q "\"$WM_CLASS\"" && return 0
+    done
+    return 1
+}
+
+if running; then
+    if window_open; then
+        notify-send -a Meshtastic -i "$APP" "Meshtastic is already open" "Look for its window in the taskbar."
+        exit 0
+    fi
+    # Hidden in the tray: SIGTERM lets the JVM shut down and close its database properly
+    pkill -TERM -f -- "-jar $JAR"
+    for _ in $(seq 1 40); do running || break; sleep 0.25; done
+    running && flatpak kill "$APP"
+fi
+exec flatpak run --user "$APP" "$@"

@@ -1,0 +1,5 @@
+# /etc/udev/rules.d/70-waveshare-lora.rules
+# Names YOUR stick /dev/waveshare-lora and starts the user's meshtasticd.service when it's plugged in.
+# 1a86:55d3 is a common CH343 USB-serial chip, so match the stick's own serial number:
+#   udevadm info -q property -n /dev/ttyACM0 | grep ID_SERIAL_SHORT
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="55d3", ATTRS{serial}=="REPLACE_WITH_YOUR_SERIAL", SYMLINK+="waveshare-lora", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="meshtasticd.service"

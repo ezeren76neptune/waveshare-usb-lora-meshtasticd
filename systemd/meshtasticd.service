@@ -1,0 +1,17 @@
+# User unit: ~/.config/systemd/user/meshtasticd.service
+# Runs only while the stick is plugged in (see udev/70-waveshare-lora.rules).
+[Unit]
+Description=Meshtastic daemon on the Waveshare USB-TO-LoRa (wsbridge)
+BindsTo=dev-waveshare\x2dlora.device
+After=dev-waveshare\x2dlora.device
+#Wants=mesh-wifi-gps.service
+
+[Service]
+Environment=WSBRIDGE_PORT=/dev/waveshare-lora
+WorkingDirectory=%h/.local/share/meshtasticd-wsbridge
+ExecStart=%h/.local/bin/meshtasticd-wsbridge -c %h/.config/meshtasticd-wsbridge/config.yaml --fsdir=%h/.local/share/meshtasticd-wsbridge
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=dev-waveshare\x2dlora.device

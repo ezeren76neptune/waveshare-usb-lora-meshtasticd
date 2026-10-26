@@ -1,0 +1,3 @@
+# /etc/udev/rules.d/60-pico-debugprobe.rules
+# Raspberry Pi Pico / Pico 2 running debugprobe (CMSIS-DAP): lets openocd use it without root.
+ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="000c", MODE="0660", GROUP="plugdev", TAG+="uaccess"
