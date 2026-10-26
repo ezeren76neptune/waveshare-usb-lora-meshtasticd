@@ -23,7 +23,7 @@ git apply "$HERE/wsbridge.patch"
 
 W=src/platform/portduino/wsbridge
 mkdir -p "$W/include"
-cp "$ROOT/bridge/host/libpinedio_wsbridge.c" "$W/"
+cp "$ROOT/bridge/host/libpinedio_wsbridge.c" "$ROOT/bridge/host/api_bind.c" "$W/"
 cp "$ROOT/bridge/host/include/libpinedio-usb.h" "$ROOT/bridge/protocol.h" "$W/include/"
 
 platformio run -e native-wsbridge

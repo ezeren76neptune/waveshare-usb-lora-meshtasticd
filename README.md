@@ -146,7 +146,8 @@ uvx meshtastic --host localhost --set-owner "My Node" --set-owner-short "MN"
 uvx meshtastic --host localhost --set telemetry.device_update_interval 1800 --set telemetry.device_telemetry_enabled true
 ```
 
-Apps connect over **TCP to `127.0.0.1:4403`** (or the computer's IP), not USB. The stick doesn't speak
+Apps connect over **TCP to `127.0.0.1:4403`**, not USB. As shipped, the service only accepts
+connections from the same computer (`MESHTASTICD_API_BIND`, see below). The stick doesn't speak
 the Meshtastic app protocol; meshtasticd does. meshtasticd serves one API client at a time.
 
 ### 7. Desktop GUI (optional)
@@ -188,9 +189,14 @@ the meshtasticd unit and `GPS:` in config.yaml, then
   reports its own charge and voltage like a handheld does (101 = on charger). Peripheral batteries
   are skipped, and an unreadable voltage counts as no battery, so the low-voltage shutdown can't trip.
 - **DMShell compiled out** (`MESHTASTIC_EXCLUDE_DMSHELL`). On Linux, meshtasticd offers a login
-  shell to API clients. On a laptop the API port is reachable from whatever WiFi it's on (Fedora's
-  default firewall zone opens 1025–65535), so this build leaves it out. The API itself still gives
-  full control of the node to anyone who can reach port 4403.
+  shell to API clients, and on a laptop the API port is reachable from whatever WiFi it's on (Fedora's
+  default firewall zone opens 1025–65535).
+- **API bind address** (`-Wl,--wrap=bind` + `bridge/host/api_bind.c`): the API on port 4403 gives full
+  control of the node, and portduino's `WiFiServer` always binds every interface. With
+  `MESHTASTICD_API_BIND=127.0.0.1` (set in `systemd/meshtasticd.service`), TCP listeners bound to
+  `INADDR_ANY` are bound to that address instead, so only this computer can connect. Remove the line
+  to let a phone on the LAN connect. UDP and explicit binds are untouched. (systemd's
+  `IPAddressDeny=` would be neater, but it isn't enforced for user services.)
 - `updateBatteryLevel` no-op on portduino (it logged "not implemented" every 20 s).
 
 ## Bridge protocol

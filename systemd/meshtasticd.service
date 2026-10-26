@@ -8,6 +8,8 @@ After=dev-waveshare\x2dlora.device
 
 [Service]
 Environment=WSBRIDGE_PORT=/dev/waveshare-lora
+# API (port 4403) reachable from this computer only; remove to allow phones on the LAN
+Environment=MESHTASTICD_API_BIND=127.0.0.1
 WorkingDirectory=%h/.local/share/meshtasticd-wsbridge
 ExecStart=%h/.local/bin/meshtasticd-wsbridge -c %h/.config/meshtasticd-wsbridge/config.yaml --fsdir=%h/.local/share/meshtasticd-wsbridge
 Restart=on-failure

@@ -168,10 +168,10 @@ index f0a756a..68b9fa2 100644
  int TCPPort = SERVER_API_DEFAULT_PORT;
  bool checkConfigPort = true;
 diff --git a/variants/native/portduino/platformio.ini b/variants/native/portduino/platformio.ini
-index 0548138..5e1472b 100644
+index 0548138..a5409ee 100644
 --- a/variants/native/portduino/platformio.ini
 +++ b/variants/native/portduino/platformio.ini
-@@ -546,3 +546,17 @@ build_src_filter =
+@@ -546,3 +546,19 @@ build_src_filter =
    +<platform/portduino/PortduinoGlue.cpp> +<platform/portduino/SimRadio.cpp>
    +<platform/portduino/wasm/>
    +<modules/> -<modules/esp32/>
@@ -186,6 +186,8 @@ index 0548138..5e1472b 100644
 +  -DMESHTASTIC_WSBRIDGE
 +  ; No remote login shell: on a laptop the API port is reachable from whatever WiFi it is on
 +  -DMESHTASTIC_EXCLUDE_DMSHELL
++  ; MESHTASTICD_API_BIND=127.0.0.1 keeps the API port on this machine (src/platform/portduino/wsbridge/api_bind.c)
++  -Wl,--wrap=bind
 +lib_ignore =
 +  ${portduino_base.lib_ignore}
 +  Pine libch341-spi Userspace library
