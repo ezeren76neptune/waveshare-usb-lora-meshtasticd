@@ -20,8 +20,8 @@ builds. meshtasticd's radio code (`Ch341Hal`, RadioLib) is unmodified.
 
 **Status:** used on one USB-TO-LoRa-HF (TCXO variant) on Fedora 44, meshtasticd 2.8.2 (`c39728e`), US
 LongFast. Verified: SX1262 init, receiving the local mesh including 3-4 hop nodes and packets at
-−16 dB SNR, transmitting its node info and telemetry (sent per meshtasticd's log; reception by a
-second node not independently confirmed), control from the Meshtastic CLI and Desktop app,
+−16 dB SNR, two-way traffic with the mesh (traceroutes answered: a direct neighbour hears it at
+−8 dB while it hears them at −11.75 dB), control from the Meshtastic CLI and Desktop app,
 unplug/replug. **The flashing step permanently erases Waveshare's firmware.** It's read-protected
 and can't be backed up.
 
@@ -220,8 +220,15 @@ unplugs immediately so meshtasticd's recovery and the udev-bound service take ov
   firmware's FreeRTOS unmasks them; a bare-metal app must run `cpsie i` itself.
 - **SPI mode fault:** on the GD32, `spi_init_master()` sets MSTR before software-NSS, and the SPI
   mode-faults straight back out of master. Write SSM|SSI|MSTR in one go.
-- **RF switch:** PB4 high = RX path, low = TX. That's exactly meshtasticd's `RXen` semantics. DIO2 isn't
-  used. The SX1262's TCXO is driven from DIO3 at 1.7 V.
+- **RF switch: `DIO2_AS_RF_SWITCH: true` is required.** Archie3d's notes say DIO2 seems unused, and the
+  first setup here followed that. The result was a stick that receives perfectly but whose transmissions
+  only reach a radio sitting next to it: 18 traceroutes to 13 nodes got no reply while it decoded 98
+  packets from 39 nodes. Like every other Waveshare SX1262 module in meshtasticd's `config.d`, the
+  module switches its antenna to the PA via DIO2. With it on, traceroutes came back first try.
+  PB4 is still driven as `RXen` (high on RX, low on TX), which is what Waveshare's firmware did.
+  The SX1262's TCXO is driven from DIO3 at 1.7 V.
+- **"Receives fine, nobody hears it" = RF switch first.** RX working proves nothing about the TX
+  path. Check the module's switch control before blaming range, antenna or power.
 - **Meshtastic Desktop on native Wayland:** JetBrains Runtime only honours
   `-Dawt.toolkit.name=WLToolkit` through `JDK_JAVA_OPTIONS`; its launcher overrides it in
   `JAVA_TOOL_OPTIONS`. Even then Skiko dies with "Can't lock DrawingSurface", including with

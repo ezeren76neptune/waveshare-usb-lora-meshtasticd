@@ -12,7 +12,7 @@ Lora:
   Reset: 2
   Busy: 4
   IRQ: 6
-  DIO2_AS_RF_SWITCH: false
+  DIO2_AS_RF_SWITCH: true  # REQUIRED: the module switches its antenna to TX via DIO2 (off = TX leaks only)
   DIO3_TCXO_VOLTAGE: 1.7  # what Waveshare's firmware used (Archie3d's notes)
   SX126X_MAX_POWER: 22
 
