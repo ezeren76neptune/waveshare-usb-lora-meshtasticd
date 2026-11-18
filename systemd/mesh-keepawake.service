@@ -1,0 +1,12 @@
+# User unit: ~/.config/systemd/user/mesh-keepawake.service
+# Blocks idle sleep while meshtasticd runs, so the node stays on the mesh with the screen locked.
+# meshtasticd.service pulls it in (Wants=); it stops with meshtasticd (BindsTo=).
+[Unit]
+Description=Block idle sleep while meshtasticd runs (node stays up with the screen locked)
+BindsTo=meshtasticd.service
+After=meshtasticd.service
+
+[Service]
+ExecStart=/usr/bin/python3 %h/.local/share/meshtasticd-wsbridge/mesh_keepawake.py
+Restart=on-failure
+RestartSec=10

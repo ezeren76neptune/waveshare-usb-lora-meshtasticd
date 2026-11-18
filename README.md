@@ -138,6 +138,25 @@ journalctl --user -u meshtasticd -f      # look for "sx1262 init success" and "A
 
 Your user needs to be in the `dialout` group.
 
+### Keep it running with the screen locked
+
+Locking the screen doesn't stop user services, but the desktop's automatic idle sleep does, and it
+takes the radio off the mesh. `keepawake/mesh_keepawake.py` holds a power-management inhibition
+(`org.freedesktop.PowerManagement.Inhibit`, which KDE's PowerDevil implements; it needs PyGObject)
+for as long as meshtasticd runs:
+
+```bash
+install -m644 keepawake/mesh_keepawake.py ~/.local/share/meshtasticd-wsbridge/
+install -m644 systemd/mesh-keepawake.service ~/.config/systemd/user/
+systemctl --user daemon-reload && systemctl --user restart meshtasticd
+busctl --user get-property org.kde.Solid.PowerManagement /org/kde/Solid/PowerManagement/PolicyAgent \
+  org.kde.Solid.PowerManagement.PolicyAgent ActiveInhibitions      # lists "meshtasticd" after ~5 s
+```
+
+Only idle sleep is blocked: closing the lid or choosing Sleep still sleeps, and unplugging the stick
+releases the block. A plain `systemd-inhibit --what=idle` isn't used because PowerDevil doesn't show
+logind inhibitors among its inhibitions, so there's no way to confirm it honours them.
+
 ### 6. Configure the node
 
 ```bash

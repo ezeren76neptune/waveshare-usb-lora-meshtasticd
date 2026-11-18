@@ -4,6 +4,7 @@
 Description=Meshtastic daemon on the Waveshare USB-TO-LoRa (wsbridge)
 BindsTo=dev-waveshare\x2dlora.device
 After=dev-waveshare\x2dlora.device
+Wants=mesh-keepawake.service
 #Wants=mesh-wifi-gps.service
 
 [Service]
